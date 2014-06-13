@@ -21,31 +21,24 @@ module Utils
     end
   end
 
-  def self.recursively_symbolize_keys(object)
-    case object
-      when Hash
-        object.inject({}) {|memo, (k, v)| memo[String === k ? k.to_sym : k] = recursively_symbolize_keys(v); memo }
-      when Array
-        object.map { |item| recursively_symbolize_keys item }
-      else
-        object
+  def self.interpolate_jsonpaths(value, data, options = {})
+    if options[:leading_dollarsign_is_jsonpath] && value[0] == '$'
+      Utils.values_at(data, value).first.to_s
+    else
+      value.gsub(/<[^>]+>/).each { |jsonpath|
+        Utils.values_at(data, jsonpath[1..-2]).first.to_s
+      }
     end
   end
 
-  def self.interpolate_jsonpaths(value, data)
-    value.gsub(/<[^>]+>/).each { |jsonpath|
-      Utils.values_at(data, jsonpath[1..-2]).first.to_s
-    }
-  end
-
-  def self.recursively_interpolate_jsonpaths(struct, data)
+  def self.recursively_interpolate_jsonpaths(struct, data, options = {})
     case struct
       when Hash
-        struct.inject({}) {|memo, (key, value)| memo[key] = recursively_interpolate_jsonpaths(value, data); memo }
+        struct.inject({}) {|memo, (key, value)| memo[key] = recursively_interpolate_jsonpaths(value, data, options); memo }
       when Array
-        struct.map {|elem| recursively_interpolate_jsonpaths(elem, data) }
+        struct.map {|elem| recursively_interpolate_jsonpaths(elem, data, options) }
       when String
-        interpolate_jsonpaths(struct, data)
+        interpolate_jsonpaths(struct, data, options)
       else
         struct
     end
@@ -63,7 +56,7 @@ module Utils
       escape = false
     end
 
-    result = JsonPath.new(path, :allow_eval => false).on(data.is_a?(String) ? data : data.to_json)
+    result = JsonPath.new(path, :allow_eval => ENV['ALLOW_JSONPATH_EVAL'] == "true").on(data.is_a?(String) ? data : data.to_json)
     if escape
       result.map {|r| CGI::escape r }
     else

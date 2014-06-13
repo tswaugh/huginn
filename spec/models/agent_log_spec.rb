@@ -42,6 +42,13 @@ describe AgentLog do
     end
   end
 
+  it "truncates message to a reasonable length" do
+    log = AgentLog.new(:agent => agents(:jane_website_agent), :level => 3)
+    log.message = "a" * 3000
+    log.save!
+    log.message.length.should == 2048
+  end
+
   describe "#log_for_agent" do
     it "creates AgentLogs" do
       log = AgentLog.log_for_agent(agents(:jane_website_agent), "some message", :level => 4, :outbound_event => events(:jane_website_agent_event))
@@ -67,11 +74,19 @@ describe AgentLog do
       agents(:jane_website_agent).logs.order("agent_logs.id desc").first.message.should == "message 6"
       agents(:jane_website_agent).logs.order("agent_logs.id desc").last.message.should == "message 3"
     end
+
+    it "updates Agents' last_error_log_at when an error is logged" do
+      AgentLog.log_for_agent(agents(:jane_website_agent), "some message", :level => 3, :outbound_event => events(:jane_website_agent_event))
+      agents(:jane_website_agent).reload.last_error_log_at.should be_nil
+
+      AgentLog.log_for_agent(agents(:jane_website_agent), "some message", :level => 4, :outbound_event => events(:jane_website_agent_event))
+      agents(:jane_website_agent).reload.last_error_log_at.to_i.should be_within(2).of(Time.now.to_i)
+    end
   end
 
   describe "#log_length" do
-    it "defaults to 100" do
-      AgentLog.log_length.should == 100
+    it "defaults to 200" do
+      AgentLog.log_length.should == 200
     end
   end
 end

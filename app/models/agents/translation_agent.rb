@@ -1,5 +1,6 @@
 module Agents
   class TranslationAgent < Agent
+    include LiquidInterpolatable
 
     cannot_be_scheduled!
 
@@ -8,7 +9,7 @@ module Agents
       Services are provided using Microsoft Translator. You can [sign up](https://datamarket.azure.com/dataset/bing/microsofttranslator) and [register your application](https://datamarket.azure.com/developer/applications/register) to get `client_id` and `client_secret` which are required to use this agent.
       `to` must be filled with a [translator language code](http://msdn.microsoft.com/en-us/library/hh456380.aspx).
 
-      Specify what you would like to translate in `content` field, by specifying key and JSONPath of content to be translated.
+      Specify what you would like to translate in `content` field, you can use [Liquid](https://github.com/cantino/huginn/wiki/Formatting-Events-using-Liquid) specify which part of the payload you want to translate.
 
       `expected_receive_period_in_days` is the maximum number of days you would allow to pass between events.
     MD
@@ -17,26 +18,26 @@ module Agents
 
     def default_options
       {
-        :client_id => "xxxxxx",
-        :client_secret => "xxxxxx",
-        :to => "fi",
-        :expected_receive_period_in_days => 1,
-        :content => {
-          :text => "$.message.text",
-          :content => "$.xyz"
+        'client_id' => "xxxxxx",
+        'client_secret' => "xxxxxx",
+        'to' => "fi",
+        'expected_receive_period_in_days' => 1,
+        'content' => {
+          'text' => "{{message.text}}",
+          'content' => "{{xyz}}"
         }
       }
     end
 
     def working?
-      last_receive_at && last_receive_at > options[:expected_receive_period_in_days].to_i.days.ago && !recent_error_logs?
+      last_receive_at && last_receive_at > options['expected_receive_period_in_days'].to_i.days.ago && !recent_error_logs?
     end
 
     def translate(text, to, access_token)
       translate_uri = URI 'http://api.microsofttranslator.com/v2/Ajax.svc/Translate'
       params = {
-          :text => text,
-          :to => to
+        'text' => text,
+        'to' => to
       }
       translate_uri.query = URI.encode_www_form params
       request = Net::HTTP::Get.new translate_uri.request_uri
@@ -47,7 +48,7 @@ module Agents
     end
 
     def validate_options
-      unless options[:client_id].present? && options[:client_secret].present? && options[:to].present? && options[:content].present? && options[:expected_receive_period_in_days].present?
+      unless options['client_id'].present? && options['client_secret'].present? && options['to'].present? && options['content'].present? && options['expected_receive_period_in_days'].present?
         errors.add :base, "client_id,client_secret,to,expected_receive_period_in_days and content are all required"
       end
     end
@@ -60,16 +61,16 @@ module Agents
 
     def receive(incoming_events)
       auth_uri = URI "https://datamarket.accesscontrol.windows.net/v2/OAuth2-13"
-      response = postform auth_uri, :client_id => options[:client_id],
-                                    :client_secret => options[:client_secret],
+      response = postform auth_uri, :client_id => options['client_id'],
+                                    :client_secret => options['client_secret'],
                                     :scope => "http://api.microsofttranslator.com",
                                     :grant_type => "client_credentials"
       access_token = JSON.parse(response.body)["access_token"]
       incoming_events.each do |event|
         translated_event = {}
-        options[:content].each_pair do |key, value|
-          to_be_translated = Utils.values_at event.payload, value
-          translated_event[key] = translate to_be_translated.first, options[:to], access_token
+        options['content'].each_pair do |key, value|
+          to_be_translated = interpolate_string(value, event.payload)
+          translated_event[key] = translate(to_be_translated.first, options['to'], access_token)
         end
         create_event :payload => translated_event
       end

@@ -26,14 +26,20 @@ Huginn::Application.routes.draw do
     end
   end
 
-  match "/worker_status" => "worker_status#show"
+  resources :user_credentials, :except => :show
+
+  get "/worker_status" => "worker_status#show"
 
   post "/users/:user_id/update_location/:secret" => "user_location_updates#create"
-  post "/users/:user_id/webhooks/:agent_id/:secret" => "webhooks#create"
 
-#  match "/delayed_job" => DelayedJobWeb, :anchor => false
+  match  "/users/:user_id/web_requests/:agent_id/:secret" => "web_requests#handle_request", :as => :web_requests, :via => [:get, :post, :put, :delete]
+  post "/users/:user_id/webhooks/:agent_id/:secret" => "web_requests#handle_request" # legacy
+
+# To enable DelayedJobWeb, see the 'Enable DelayedJobWeb' section of the README.
+#  get "/delayed_job" => DelayedJobWeb, :anchor => false
+
   devise_for :users, :sign_out_via => [ :post, :delete ]
 
-  match "/about" => "home#about"
+  get "/about" => "home#about"
   root :to => "home#index"
 end

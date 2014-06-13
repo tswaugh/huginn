@@ -12,31 +12,27 @@
     <%= yield(:head) %>
   </head>
   <body>
-    <header class="navbar navbar-fixed-top">
-      <nav class="navbar-inner">
-        <div class="container">
-          <%= render 'layouts/navigation' %>
-        </div>
-      </nav>
-    </header>
+    <nav class="navbar navbar-default navbar-fixed-top" role="navigation">
+      <div class="container">
+        <%= render 'layouts/navigation' %>
+      </div>
+    </nav>
 
     <div id="main" role="main">
       <div class="container">
-        <div class="content">
-           <div class="row">
-            <div class="span12">
-              <%= render 'layouts/messages' %>
-              <%= yield %>
-            </div>
-          </div>
+        <div class="row">
+          <%= render 'layouts/messages' %>
         </div>
       </div>
+      
+      <%= yield %>
+      
     </div>
 
     <script>
       var agentPaths = {};
       <% if current_user -%>
-        var myAgents = <%= Utils.jsonify(current_user.agents.inject({}) {|m, a| m[a.name] = agent_path(a) unless a.new_record?; m }) %>;
+        var myAgents = <%= Utils.jsonify(current_user.agents.select([:name, :id, :schedule]).inject({}) {|m, a| m[a.name] = agent_path(a); m }) %>;
         $.extend(agentPaths, myAgents);
       <% end -%>
       agentPaths["All Agents Index"] = <%= Utils.jsonify agents_path %>;

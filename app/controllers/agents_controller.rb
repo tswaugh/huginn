@@ -1,4 +1,6 @@
 class AgentsController < ApplicationController
+  include DotHelper
+
   def index
     @agents = current_user.agents.page(params[:page])
 
@@ -33,6 +35,7 @@ class AgentsController < ApplicationController
     render :json => {
         :can_be_scheduled => agent.can_be_scheduled?,
         :can_receive_events => agent.can_receive_events?,
+        :can_create_events => agent.can_create_events?,
         :options => agent.default_options,
         :description_html => agent.html_description
     }
@@ -68,7 +71,13 @@ class AgentsController < ApplicationController
   end
 
   def new
-    @agent = current_user.agents.build
+    agents = current_user.agents
+
+    if id = params[:id]
+      @agent = agents.build_clone(agents.find(id))
+    else
+      @agent = agents.build
+    end
 
     respond_to do |format|
       format.html
@@ -104,7 +113,13 @@ class AgentsController < ApplicationController
 
     respond_to do |format|
       if @agent.update_attributes(params[:agent])
-        format.html { redirect_to agents_path, notice: 'Your Agent was successfully updated.' }
+        format.html {
+          if params[:return] == "show"
+            redirect_to agent_path(@agent), notice: 'Your Agent was successfully updated.'
+          else
+            redirect_to agents_path, notice: 'Your Agent was successfully updated.'
+          end
+        }
         format.json { head :no_content }
       else
         format.html { render action: "edit" }

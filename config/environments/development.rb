@@ -8,8 +8,11 @@ Huginn::Application.configure do
   # since you don't have to restart the web server when you make code changes.
   config.cache_classes = false
 
-  # Log error messages when you accidentally call methods on nil.
-  config.whiny_nils = true
+  # Eager load code on boot. This eager loads most of Rails and
+  # your application in memory, allowing both threaded web servers
+  # and those relying on copy on write to perform better.
+  # Rake tasks automatically ignore this option for performance.
+  config.eager_load = false
 
   # Show full error reports and disable caching
   config.consider_all_requests_local       = true
@@ -24,12 +27,8 @@ Huginn::Application.configure do
   # Raise exception on mass assignment protection for Active Record models
   config.active_record.mass_assignment_sanitizer = :strict
 
-  # Log the query plan for queries taking more than this (works
-  # with SQLite, MySQL, and PostgreSQL)
-  config.active_record.auto_explain_threshold_in_seconds = 0.5
-
-  # Do not compress assets
-  config.assets.compress = false
+  # Raise an error on page load if there are pending migrations.
+  config.active_record.migration_error = :page_load
 
   # Expands the lines which load the assets
   config.assets.debug = true
@@ -39,13 +38,5 @@ Huginn::Application.configure do
   config.action_mailer.perform_deliveries = false # Enable when testing!
   config.action_mailer.raise_delivery_errors = true
   config.action_mailer.delivery_method = :smtp
-  config.action_mailer.smtp_settings = {
-      address: ENV['SMTP_SERVER'] || 'smtp.gmail.com',
-      port: ENV['SMTP_PORT'] || 587,
-      domain: ENV['SMTP_DOMAIN'],
-      authentication: ENV['SMTP_AUTHENTICATION'] || 'plain',
-      enable_starttls_auto: ENV['SMTP_ENABLE_STARTTLS_AUTO'] == 'true' ? true : false,
-      user_name: ENV['SMTP_USER_NAME'],
-      password: ENV['SMTP_PASSWORD']
-  }
+  # smtp_settings moved to config/initializers/action_mailer.rb
 end
